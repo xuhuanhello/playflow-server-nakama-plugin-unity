@@ -2,7 +2,7 @@
 
 Unity companion to the [Nakama PlayFlow FleetManager](https://github.com/xuhuanhello/nakama-playflow). It connects a multi-room dedicated server to the fleet controller and helps clients retrieve their server assignment.
 
-This is a community package, not an official PlayFlow or Heroic Labs integration. Version `0.1.0` is an initial integration foundation; live cloud and game acceptance are still required.
+This is a community package, not an official PlayFlow or Heroic Labs integration. Version `0.1.0` has passed [real PlayFlow lifecycle checks](https://github.com/xuhuanhello/nakama-playflow/blob/main/docs/validation-2026-09-21.md) with a game-specific Unity/FishNet adapter; production latency, capacity and multi-instance scaling remain unvalidated.
 
 ## Features
 
