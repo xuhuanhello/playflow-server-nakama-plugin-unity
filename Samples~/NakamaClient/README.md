@@ -7,6 +7,7 @@ Create this helper with your existing authenticated `IClient`/`ISession`. Subscr
 ```csharp
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Nakama;
@@ -36,9 +37,9 @@ public sealed class NakamaFleetExample
             { "region", region },
             { "build_hash", _buildHash }
         };
-        // Quote each profile value. These must equal the backend's configured pool identity.
-        var query = "+properties.region:" + FleetProtocol.Serialize(region)
-            + " +properties.build_hash:" + FleetProtocol.Serialize(_buildHash);
+        // Profile values must equal the backend's configured pool identity.
+        var query = "+properties.region:" + KeywordTerm(region)
+            + " +properties.build_hash:" + KeywordTerm(_buildHash);
         return socket.AddMatchmakerAsync(query, 2, 2, stringProperties: properties);
     }
 
@@ -70,6 +71,14 @@ public sealed class NakamaFleetExample
             AllocationPayload(allocationId), canceller: token);
     }
 
+    private static string KeywordTerm(string value)
+    {
+        if (value == null || !Regex.IsMatch(value, @"\A[A-Za-z0-9_.:-]{1,128}\z",
+                RegexOptions.CultureInvariant))
+            throw new ArgumentException("Use an ASCII region/build identifier (1-128 letters, digits, _, ., :, or -).", nameof(value));
+        return value.Replace("-", @"\-").Replace(":", @"\:");
+    }
+
     private static string AllocationPayload(string allocationId)
     {
         if (string.IsNullOrWhiteSpace(allocationId))
@@ -93,6 +102,8 @@ The backend routes and payloads are:
 | Cancel allocated match | `fleet_assignment_cancel_v1` | `{"allocation_id":"..."}` |
 
 `region` and `build_hash` belong in matchmaker string properties and the filtering query; the Go matched hook validates both against its configured pool. A deployment namespace has one immutable region/build profile. Routing clients to another build/region requires coordinating the appropriate backend deployment; this package does not provide a multiple-pool router.
+
+Nakama 3.41.0 indexes these strings as keyword fields without term positions. JSON-style quotes create a phrase query that cannot match them; `KeywordTerm` validates the identifier and escapes reserved characters at the query layer. Keep the original values in `stringProperties`. See the [property index](https://github.com/heroiclabs/nakama/blob/v3.41.0/server/match_common.go#L166) and [phrase parser](https://github.com/heroiclabs/nakama/blob/v3.41.0/vendor/github.com/blugelabs/query_string/query_string_parser.go#L212).
 
 The backend's notification subject is `fleet_assignment` (code 1001), which is **not** an RPC name. Use notifications to trigger an earlier `fleet_assignment_get_v1` query; polling is still the recovery path when a notification is lost. Responses contain the assignment object itself, with only the current user's admission token.
 
