@@ -1,0 +1,23 @@
+name: Portable protocol tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  portable-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - name: Run portable security and contract tests
+        run: dotnet run --project Tests~/Portable/PortableTests.csproj --configuration Release -p:UseSharedCompilation=false

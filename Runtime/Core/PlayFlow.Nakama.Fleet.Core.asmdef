@@ -1,0 +1,9 @@
+{
+  "name": "PlayFlow.Nakama.Fleet.Core",
+  "rootNamespace": "PlayFlow.Nakama.Fleet.Core",
+  "references": ["PlayFlow.Nakama.Fleet.Protocol"],
+  "overrideReferences": true,
+  "precompiledReferences": ["Newtonsoft.Json.dll"],
+  "autoReferenced": true,
+  "noEngineReferences": true
+}

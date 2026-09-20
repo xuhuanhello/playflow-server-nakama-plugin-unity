@@ -1,0 +1,6 @@
+{
+  "name": "PlayFlow.Nakama.Fleet.Server",
+  "rootNamespace": "PlayFlow.Nakama.Fleet.Server",
+  "references": ["PlayFlow.Nakama.Fleet.Protocol", "PlayFlow.Nakama.Fleet.Core"],
+  "autoReferenced": true
+}

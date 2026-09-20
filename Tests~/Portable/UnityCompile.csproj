@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <Nullable>disable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <Target Name="RequireUnityPaths" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(UnityManagedPath)' == '' Or '$(UnityNewtonsoftPath)' == ''"
+      Text="Supply UnityManagedPath and UnityNewtonsoftPath for the installed Unity 2022.3 reference assemblies." />
+  </Target>
+  <ItemGroup>
+    <Compile Include="../../Runtime/**/*.cs" />
+    <Compile Include="../../Samples~/MinimalServer/*.cs" />
+    <Reference Include="Newtonsoft.Json"><HintPath>$(UnityNewtonsoftPath)</HintPath></Reference>
+    <Reference Include="UnityEngine"><HintPath>$(UnityManagedPath)/UnityEngine.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>$(UnityManagedPath)/UnityEngine.CoreModule.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.UnityWebRequestModule"><HintPath>$(UnityManagedPath)/UnityEngine.UnityWebRequestModule.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

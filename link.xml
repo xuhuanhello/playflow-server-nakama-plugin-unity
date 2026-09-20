@@ -1,0 +1,4 @@
+<linker>
+  <!-- Newtonsoft accesses these wire fields through reflection, including in IL2CPP builds. -->
+  <assembly fullname="PlayFlow.Nakama.Fleet.Protocol" preserve="all" />
+</linker>

@@ -1,0 +1,12 @@
+title = "Public reproducible protocol fixtures only"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Documented deterministic Go-generated admission fixture (bytes 0 through 31)"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)Tests~/Portable/fixtures/admission-v1\.json$''']
+regexTarget = "secret"
+regexes = ['''^AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8$''']

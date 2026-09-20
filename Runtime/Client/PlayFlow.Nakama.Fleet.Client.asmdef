@@ -1,0 +1,7 @@
+{
+  "name": "PlayFlow.Nakama.Fleet.Client",
+  "rootNamespace": "PlayFlow.Nakama.Fleet.Client",
+  "references": ["PlayFlow.Nakama.Fleet.Protocol"],
+  "autoReferenced": true,
+  "noEngineReferences": true
+}

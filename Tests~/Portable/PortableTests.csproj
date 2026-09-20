@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <Nullable>disable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="../../Runtime/Protocol/*.cs" />
+    <Compile Include="../../Runtime/Core/*.cs" />
+    <Compile Include="../../Runtime/Client/*.cs" />
+    <Compile Include="../../Runtime/ServerAgent/FleetAgentOptions.cs" />
+    <None Include="fixtures/admission-v1.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UnityNewtonsoftPath)' != ''">
+    <Reference Include="Newtonsoft.Json"><HintPath>$(UnityNewtonsoftPath)</HintPath></Reference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(UnityNewtonsoftPath)' == ''">
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
+  </ItemGroup>
+  <!-- Optional compile against actual Unity 2022.3 reference assemblies, without launching the Editor. -->
+  <ItemGroup Condition="'$(UnityManagedPath)' != ''">
+    <Compile Include="../../Runtime/ServerAgent/*.cs" Exclude="../../Runtime/ServerAgent/FleetAgentOptions.cs" />
+    <Compile Include="../../Samples~/MinimalServer/*.cs" />
+    <Reference Include="UnityEngine"><HintPath>$(UnityManagedPath)/UnityEngine.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>$(UnityManagedPath)/UnityEngine.CoreModule.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.UnityWebRequestModule"><HintPath>$(UnityManagedPath)/UnityEngine.UnityWebRequestModule.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>
