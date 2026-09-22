@@ -29,6 +29,7 @@ internal static class Program
         Run("cleanup results reclaim bounded space", TestCleanupReclaim);
         Run("cancel fences a delayed prepare at the same epoch", TestCancelledRoomFence);
         Run("strict JSON and audit metrics contract", TestProtocol);
+        Run("optional latency windows preserve unavailable and old payloads", TestLatencyWindows);
         Run("HTTPS configuration and explicit local HTTP", TestControlUrl);
         Run("default admission fence precedes controller heartbeat timeout", TestControlDeadline);
         Run("assignment build and expiry validation", TestAssignmentValidation);
@@ -37,6 +38,35 @@ internal static class Program
         await RunAsync("timeout works when SDK ignores cancellation", TestTimeout);
         await RunAsync("caller cancellation remains cancellation", TestCancellation);
         Console.WriteLine("PASS " + _passed + " portable contract/security tests.");
+    }
+
+    private static void TestLatencyWindows()
+    {
+        var old = FleetProtocol.Deserialize<FleetMetrics>("{\"simulation_pending\":2,\"memory_bytes\":1024}");
+        Assert(old.ClientPresentationToReadyMs == null && old.SimulationWorkers == null, "old metrics invented samples");
+        var empty = FleetProtocol.Serialize(new FleetMetrics { ClientPresentationToReadyMs = new LatencyWindow() });
+        Assert(empty.Contains("\"p95\":null") && empty.Contains("\"last_sample_age_seconds\":null"), "zero samples must explicitly remain unavailable");
+        Assert(!empty.Contains("simulation_workers"), "unspecified worker configuration must remain optional");
+        var values = new FleetMetrics { SimulationWorkers = 2, AuditWorkers = 1 };
+        var window = new LatencyWindow { Count = 3, P50 = 10, P95 = 20, P99 = 20, Max = 20, LastSampleAgeSeconds = 1 };
+        values.ClientPresentationToReadyMs = window;
+        values.ClientPresentationToSettlementMs = window;
+        values.ServerFirstAckToReadyMs = window;
+        values.ServerFirstAckToSettlementMs = window;
+        values.ServerLastAckToReadyMs = window;
+        values.ServerLastAckToSettlementMs = window;
+        values.SimulationQueueMs = window;
+        values.SimulationWorkMs = window;
+        var roundtrip = FleetProtocol.Deserialize<FleetMetrics>(FleetProtocol.Serialize(values));
+        Assert(roundtrip.SimulationWorkers == 2 && roundtrip.AuditWorkers == 1, "worker configuration lost");
+        Assert(roundtrip.ClientPresentationToReadyMs.Count == 3 && roundtrip.ClientPresentationToReadyMs.P95 == 20 && roundtrip.ClientPresentationToReadyMs.WindowSeconds == 60, "client_presentation_to_ready_ms lost");
+        Assert(roundtrip.ClientPresentationToSettlementMs.Count == 3 && roundtrip.ClientPresentationToSettlementMs.P95 == 20 && roundtrip.ClientPresentationToSettlementMs.WindowSeconds == 60, "client_presentation_to_settlement_ms lost");
+        Assert(roundtrip.ServerFirstAckToReadyMs.Count == 3 && roundtrip.ServerFirstAckToReadyMs.P95 == 20 && roundtrip.ServerFirstAckToReadyMs.WindowSeconds == 60, "server_first_ack_to_ready_ms lost");
+        Assert(roundtrip.ServerFirstAckToSettlementMs.Count == 3 && roundtrip.ServerFirstAckToSettlementMs.P95 == 20 && roundtrip.ServerFirstAckToSettlementMs.WindowSeconds == 60, "server_first_ack_to_settlement_ms lost");
+        Assert(roundtrip.ServerLastAckToReadyMs.Count == 3 && roundtrip.ServerLastAckToReadyMs.P95 == 20 && roundtrip.ServerLastAckToReadyMs.WindowSeconds == 60, "server_last_ack_to_ready_ms lost");
+        Assert(roundtrip.ServerLastAckToSettlementMs.Count == 3 && roundtrip.ServerLastAckToSettlementMs.P95 == 20 && roundtrip.ServerLastAckToSettlementMs.WindowSeconds == 60, "server_last_ack_to_settlement_ms lost");
+        Assert(roundtrip.SimulationQueueMs.Count == 3 && roundtrip.SimulationQueueMs.P95 == 20 && roundtrip.SimulationQueueMs.WindowSeconds == 60, "simulation_queue_ms lost");
+        Assert(roundtrip.SimulationWorkMs.Count == 3 && roundtrip.SimulationWorkMs.P95 == 20 && roundtrip.SimulationWorkMs.WindowSeconds == 60, "simulation_work_ms lost");
     }
 
     private static AdmissionClaims Claims() => new AdmissionClaims

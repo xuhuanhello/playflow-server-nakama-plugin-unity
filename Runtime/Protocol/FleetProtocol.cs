@@ -92,6 +92,19 @@ namespace PlayFlow.Nakama.Fleet.Protocol
         [JsonProperty("user_ids")] public string[] UserIds = Array.Empty<string>();
     }
 
+    // Optional bounded observation window. Null percentiles mean no observations, never zero latency.
+    [Serializable]
+    public sealed class LatencyWindow
+    {
+        [JsonProperty("window_seconds")] public int WindowSeconds = 60;
+        [JsonProperty("count")] public int Count;
+        [JsonProperty("p50", NullValueHandling = NullValueHandling.Include)] public double? P50;
+        [JsonProperty("p95", NullValueHandling = NullValueHandling.Include)] public double? P95;
+        [JsonProperty("p99", NullValueHandling = NullValueHandling.Include)] public double? P99;
+        [JsonProperty("max", NullValueHandling = NullValueHandling.Include)] public double? Max;
+        [JsonProperty("last_sample_age_seconds", NullValueHandling = NullValueHandling.Include)] public double? LastSampleAgeSeconds;
+    }
+
     [Serializable]
     public sealed class FleetMetrics
     {
@@ -104,6 +117,17 @@ namespace PlayFlow.Nakama.Fleet.Protocol
         [JsonProperty("pending_results")] public int PendingResults;
         // Whole-process memory (RSS/cgroup as measured by the host), not GC.GetTotalMemory.
         [JsonProperty("memory_bytes")] public long MemoryBytes;
+        // Client observations are untrusted telemetry and must never drive automatic scaling.
+        [JsonProperty("client_presentation_to_ready_ms")] public LatencyWindow ClientPresentationToReadyMs;
+        [JsonProperty("client_presentation_to_settlement_ms")] public LatencyWindow ClientPresentationToSettlementMs;
+        [JsonProperty("server_first_ack_to_ready_ms")] public LatencyWindow ServerFirstAckToReadyMs;
+        [JsonProperty("server_first_ack_to_settlement_ms")] public LatencyWindow ServerFirstAckToSettlementMs;
+        [JsonProperty("server_last_ack_to_ready_ms")] public LatencyWindow ServerLastAckToReadyMs;
+        [JsonProperty("server_last_ack_to_settlement_ms")] public LatencyWindow ServerLastAckToSettlementMs;
+        [JsonProperty("simulation_queue_ms")] public LatencyWindow SimulationQueueMs;
+        [JsonProperty("simulation_work_ms")] public LatencyWindow SimulationWorkMs;
+        [JsonProperty("simulation_workers")] public int? SimulationWorkers;
+        [JsonProperty("audit_workers")] public int? AuditWorkers;
     }
 
     [Serializable]
