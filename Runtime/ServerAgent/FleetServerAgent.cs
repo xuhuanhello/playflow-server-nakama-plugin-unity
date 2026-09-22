@@ -268,13 +268,7 @@ namespace PlayFlow.Nakama.Fleet.Server
                     {
                         RoomId = room.RoomId, State = room.State, UserIds = (string[])room.UserIds.Clone()
                     }).ToArray(),
-                    Metrics = new FleetMetrics
-                    {
-                        SimulationPending = metrics.SimulationPending, SimulationActive = metrics.SimulationActive,
-                        SimulationOldestSeconds = metrics.SimulationOldestSeconds, FrameP99Ms = metrics.FrameP99Ms,
-                        MemoryBytes = metrics.MemoryBytes, AuditPending = metrics.AuditPending,
-                        AuditActive = metrics.AuditActive, PendingResults = metrics.PendingResults
-                    },
+                    Metrics = metrics.Snapshot(),
                     CommandResults = _ledger.PendingResults(_options.MaximumCommandBatch)
                 };
                 body = FleetProtocol.Serialize(heartbeat);

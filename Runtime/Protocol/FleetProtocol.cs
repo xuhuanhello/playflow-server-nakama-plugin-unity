@@ -103,6 +103,19 @@ namespace PlayFlow.Nakama.Fleet.Protocol
         [JsonProperty("p99", NullValueHandling = NullValueHandling.Include)] public double? P99;
         [JsonProperty("max", NullValueHandling = NullValueHandling.Include)] public double? Max;
         [JsonProperty("last_sample_age_seconds", NullValueHandling = NullValueHandling.Include)] public double? LastSampleAgeSeconds;
+
+        internal LatencyWindow Snapshot()
+        {
+            if (WindowSeconds != 60 || Count < 0 || Count > 100000 ||
+                (Count == 0 && (P50.HasValue || P95.HasValue || P99.HasValue || Max.HasValue || LastSampleAgeSeconds.HasValue)) ||
+                (Count > 0 && (!Valid(P50) || !Valid(P95) || !Valid(P99) || !Valid(Max) || !Valid(LastSampleAgeSeconds) ||
+                    P50 > P95 || P95 > P99 || P99 > Max || LastSampleAgeSeconds > WindowSeconds)))
+                throw new ArgumentException("Invalid latency observation window.");
+            return (LatencyWindow)MemberwiseClone();
+        }
+
+        private static bool Valid(double? value) => value.HasValue && value.Value >= 0 &&
+            !double.IsNaN(value.Value) && !double.IsInfinity(value.Value);
     }
 
     [Serializable]
@@ -128,6 +141,25 @@ namespace PlayFlow.Nakama.Fleet.Protocol
         [JsonProperty("simulation_work_ms")] public LatencyWindow SimulationWorkMs;
         [JsonProperty("simulation_workers")] public int? SimulationWorkers;
         [JsonProperty("audit_workers")] public int? AuditWorkers;
+
+        // Freeze host-owned observations together with a retried heartbeat; later host changes
+        // must not mutate the request acknowledged by the controller.
+        public FleetMetrics Snapshot()
+        {
+            if ((SimulationWorkers.HasValue && (SimulationWorkers < 1 || SimulationWorkers > 8)) ||
+                (AuditWorkers.HasValue && (AuditWorkers < 1 || AuditWorkers > 8)))
+                throw new ArgumentException("Invalid configured worker count.");
+            var copy = (FleetMetrics)MemberwiseClone();
+            copy.ClientPresentationToReadyMs = ClientPresentationToReadyMs?.Snapshot();
+            copy.ClientPresentationToSettlementMs = ClientPresentationToSettlementMs?.Snapshot();
+            copy.ServerFirstAckToReadyMs = ServerFirstAckToReadyMs?.Snapshot();
+            copy.ServerFirstAckToSettlementMs = ServerFirstAckToSettlementMs?.Snapshot();
+            copy.ServerLastAckToReadyMs = ServerLastAckToReadyMs?.Snapshot();
+            copy.ServerLastAckToSettlementMs = ServerLastAckToSettlementMs?.Snapshot();
+            copy.SimulationQueueMs = SimulationQueueMs?.Snapshot();
+            copy.SimulationWorkMs = SimulationWorkMs?.Snapshot();
+            return copy;
+        }
     }
 
     [Serializable]

@@ -30,6 +30,7 @@ internal static class Program
         Run("cancel fences a delayed prepare at the same epoch", TestCancelledRoomFence);
         Run("strict JSON and audit metrics contract", TestProtocol);
         Run("optional latency windows preserve unavailable and old payloads", TestLatencyWindows);
+        Run("heartbeat freezes every optional window and rejects invalid observations", TestMetricsSnapshot);
         Run("HTTPS configuration and explicit local HTTP", TestControlUrl);
         Run("default admission fence precedes controller heartbeat timeout", TestControlDeadline);
         Run("assignment build and expiry validation", TestAssignmentValidation);
@@ -38,6 +39,56 @@ internal static class Program
         await RunAsync("timeout works when SDK ignores cancellation", TestTimeout);
         await RunAsync("caller cancellation remains cancellation", TestCancellation);
         Console.WriteLine("PASS " + _passed + " portable contract/security tests.");
+    }
+
+
+    private static void TestMetricsSnapshot()
+    {
+        var values = new FleetMetrics { SimulationPending = 3, SimulationActive = 1, SimulationOldestSeconds = 2,
+            FrameP99Ms = 7, MemoryBytes = 1024, AuditPending = 4, AuditActive = 1, PendingResults = 5,
+            SimulationWorkers = 2, AuditWorkers = 1 };
+        var window = new LatencyWindow { Count = 2, P50 = 10, P95 = 20, P99 = 20, Max = 20, LastSampleAgeSeconds = 1 };
+        values.ClientPresentationToReadyMs = window;
+        values.ClientPresentationToSettlementMs = window;
+        values.ServerFirstAckToReadyMs = window;
+        values.ServerFirstAckToSettlementMs = window;
+        values.ServerLastAckToReadyMs = window;
+        values.ServerLastAckToSettlementMs = window;
+        values.SimulationQueueMs = window;
+        values.SimulationWorkMs = window;
+
+        var frozen = values.Snapshot();
+        Assert(FleetProtocol.Serialize(frozen) == FleetProtocol.Serialize(values), "heartbeat snapshot dropped host metrics");
+        window.P95 = 19; values.SimulationWorkers = 4;
+        Assert(frozen.ClientPresentationToReadyMs.P95 == 20, "ClientPresentationToReadyMs aliases mutable host observations");
+        Assert(frozen.ClientPresentationToSettlementMs.P95 == 20, "ClientPresentationToSettlementMs aliases mutable host observations");
+        Assert(frozen.ServerFirstAckToReadyMs.P95 == 20, "ServerFirstAckToReadyMs aliases mutable host observations");
+        Assert(frozen.ServerFirstAckToSettlementMs.P95 == 20, "ServerFirstAckToSettlementMs aliases mutable host observations");
+        Assert(frozen.ServerLastAckToReadyMs.P95 == 20, "ServerLastAckToReadyMs aliases mutable host observations");
+        Assert(frozen.ServerLastAckToSettlementMs.P95 == 20, "ServerLastAckToSettlementMs aliases mutable host observations");
+        Assert(frozen.SimulationQueueMs.P95 == 20, "SimulationQueueMs aliases mutable host observations");
+        Assert(frozen.SimulationWorkMs.P95 == 20, "SimulationWorkMs aliases mutable host observations");
+        Assert(frozen.SimulationWorkers == 2, "snapshot changed after host mutation");
+        var empty = new FleetMetrics { ClientPresentationToReadyMs = new LatencyWindow() }.Snapshot();
+        Assert(empty.ClientPresentationToReadyMs.Count == 0 && empty.ClientPresentationToReadyMs.P95 == null &&
+            empty.ClientPresentationToSettlementMs == null, "unavailable observations changed");
+        foreach (var invalid in new[] {
+            new LatencyWindow { Count = -1 }, new LatencyWindow { WindowSeconds = 5 },
+            new LatencyWindow { Count = 0, P95 = 0 }, new LatencyWindow { Count = 1 },
+            new LatencyWindow { Count = 1, P50 = 2, P95 = 1, P99 = 3, Max = 3, LastSampleAgeSeconds = 0 },
+            new LatencyWindow { Count = 1, P50 = 1, P95 = 1, P99 = 1, Max = double.NaN, LastSampleAgeSeconds = 0 },
+            new LatencyWindow { Count = 1, P50 = 1, P95 = 1, P99 = 1, Max = 1, LastSampleAgeSeconds = 61 } })
+        {
+            bool rejected = false;
+            try { new FleetMetrics { SimulationQueueMs = invalid }.Snapshot(); } catch (ArgumentException) { rejected = true; }
+            Assert(rejected, "invalid observation accepted");
+        }
+        foreach (var count in new[] { 0, 9 })
+        {
+            bool rejected = false;
+            try { new FleetMetrics { AuditWorkers = count }.Snapshot(); } catch (ArgumentException) { rejected = true; }
+            Assert(rejected, "invalid worker count accepted");
+        }
     }
 
     private static void TestLatencyWindows()
